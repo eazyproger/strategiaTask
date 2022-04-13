@@ -1,3 +1,4 @@
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.generics import CreateAPIView, RetrieveAPIView, ListAPIView
 from rest_framework.response import Response
 
@@ -14,16 +15,16 @@ class CommentCreateView(CreateAPIView):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
 
-    def create(self, request, pk, parent, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         new_comment = Comment(content=request.data['content'])
-        if parent == 'article':
+        if kwargs['parent'] == 'article':
             new_comment.level = 1
             new_comment.save()
-            article = Article.objects.get(pk=pk)
+            article = Article.objects.get(pk=kwargs['pk'])
             article.comments.add(new_comment)
             article.save()
         else:
-            parent_comment = Comment.objects.get(pk=pk)
+            parent_comment = Comment.objects.get(pk=kwargs['pk'])
             new_comment.level = parent_comment.level + 1
             new_comment.save()
             parent_comment.comments.add(new_comment)
@@ -35,11 +36,19 @@ class ArticleCommentsListView(ListAPIView):
     serializer_class = CommentSerializer
 
     def get_queryset(self):
-        queryset = Article.objects.get(pk=self.kwargs['pk']).comments.filter(level__lte=3)
+        try:
+            queryset = Article.objects.get(pk=self.kwargs['pk']).comments.filter(level__lte=3)
+        except ObjectDoesNotExist:
+            queryset = None
         return queryset
 
 
-class CommentRetrieveView(RetrieveAPIView):
-    queryset = Comment.objects.all()
+class CommentListView(ListAPIView):
     serializer_class = CommentSerializer
-    lookup_field = 'pk'
+
+    def get_queryset(self):
+        try:
+            queryset = Comment.objects.get(pk=self.kwargs['pk']).comments
+        except ObjectDoesNotExist:
+            queryset = None
+        return queryset
