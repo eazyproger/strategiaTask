@@ -1,4 +1,4 @@
-from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView
+from rest_framework.generics import CreateAPIView, RetrieveAPIView, ListAPIView
 from rest_framework.response import Response
 
 from .models import Article, Comment
@@ -31,9 +31,12 @@ class CommentCreateView(CreateAPIView):
         return Response('Comment added.')
 
 
-class CommentListView(ListAPIView):
-    queryset = Comment.objects.filter(level__lte=3)
+class ArticleCommentsListView(ListAPIView):
     serializer_class = CommentSerializer
+
+    def get_queryset(self):
+        queryset = Article.objects.get(pk=self.kwargs['pk']).comments.filter(level__lte=3)
+        return queryset
 
 
 class CommentRetrieveView(RetrieveAPIView):
